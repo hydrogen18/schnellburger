@@ -11,11 +11,15 @@ import "log"
 import "io/ioutil"
 import "runtime"
 
-/* Returns nil, nil if no such key exists. */
+/* Returns (nil, nil) if no such key exists.
+Returning an error results in that error being show to the
+client and a status code of http.StatusInternalServerError
+begin returned */
 type KeyProvider interface {
 	GetKey(index uint64) ([]byte, error)
 }
 
+/*Wrapper to allow functions to be used as KeyProvider*/
 type KeyProviderFunc func(index uint64) ([]byte, error)
 
 func (kpf KeyProviderFunc) GetKey(index uint64) ([]byte, error) {
@@ -23,7 +27,11 @@ func (kpf KeyProviderFunc) GetKey(index uint64) ([]byte, error) {
 }
 
 type Schnellburger struct {
-	Kp        KeyProvider
+	//Interface used to lookup keys from key indices. If the client
+	//does not provide a key index, the 0'th key is looked up.
+	Kp KeyProvider
+
+	//Algorithm used to verify message authenticity
 	Algorithm func() hash.Hash
 
 	impl Handler
@@ -41,6 +49,18 @@ func (sb Schnellburger) saneOrPanic() {
 	}
 }
 
+/**
+A handler as used by this package. The third parameter must be called
+before taking any action based off the request but
+after req.Body is consumed completely. If false is returned
+the implementation must return immediately without taking
+any other action. If true is returned the request is authentic
+and the handler should proceed as normal.
+
+See:
+WrapHandler
+WrapHttpHandler
+**/
 type Handler interface {
 	ServeHTTP(rw http.ResponseWriter, req *http.Request, verify func() bool)
 }
@@ -51,6 +71,10 @@ func (f HandlerFunc) ServeHTTP(rw http.ResponseWriter, req *http.Request, verify
 	f(rw, req, verify)
 }
 
+/**
+Protects a handler with HMAC verification. If the handler only responds
+to requests with a body, this is the preferred way to use this package.
+**/
 func (sb Schnellburger) WrapHandler(handler Handler) http.Handler {
 	sb.saneOrPanic()
 	sb.algorithmSize = sb.Algorithm().Size()
@@ -103,6 +127,11 @@ func (hhw httpHandlerWrapper) ServeHTTP(rw http.ResponseWriter, req *http.Reques
 	hhw.Handler.ServeHTTP(rw, req)
 }
 
+/**
+Protects a traditional http.Handler instance with HMAC verification. If the
+handler only responds to requests without a body, this is the preferred
+way to use this package.
+**/
 func (sb Schnellburger) WrapHttpHandler(handler http.Handler) http.Handler {
 	return sb.WrapHandler(httpHandlerWrapper{handler})
 
@@ -240,7 +269,7 @@ func (sb Schnellburger) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	}
 
-	responseWriterWrapper := &CheckIfVerifiedResponseWriter{}
+	responseWriterWrapper := &checkIfVerifiedResponseWriter{}
 	responseWriterWrapper.ResponseWriter = rw
 	responseWriterWrapper.keyFound = keyFound
 	responseWriterWrapper.sb = sb
@@ -260,7 +289,7 @@ func (sb Schnellburger) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 }
 
-type CheckIfVerifiedResponseWriter struct {
+type checkIfVerifiedResponseWriter struct {
 	ok           bool
 	badImpl      bool
 	verifyCalled bool
@@ -272,7 +301,7 @@ type CheckIfVerifiedResponseWriter struct {
 	http.ResponseWriter
 }
 
-func (rw *CheckIfVerifiedResponseWriter) verify() bool {
+func (rw *checkIfVerifiedResponseWriter) verify() bool {
 	rw.verifyCalled = true
 
 	//Note:
@@ -303,7 +332,7 @@ func (rw *CheckIfVerifiedResponseWriter) verify() bool {
 	return rw.ok
 }
 
-func (rw *CheckIfVerifiedResponseWriter) handleBadImpl() {
+func (rw *checkIfVerifiedResponseWriter) handleBadImpl() {
 	if !rw.badImpl {
 		_, file, line, ok := runtime.Caller(2)
 		if ok {
@@ -316,7 +345,7 @@ func (rw *CheckIfVerifiedResponseWriter) handleBadImpl() {
 	}
 }
 
-func (rw *CheckIfVerifiedResponseWriter) Header() http.Header {
+func (rw *checkIfVerifiedResponseWriter) Header() http.Header {
 	if !rw.ok {
 		rw.handleBadImpl()
 		return http.Header{}
@@ -325,7 +354,7 @@ func (rw *CheckIfVerifiedResponseWriter) Header() http.Header {
 	return rw.ResponseWriter.Header()
 }
 
-func (rw *CheckIfVerifiedResponseWriter) WriteHeader(i int) {
+func (rw *checkIfVerifiedResponseWriter) WriteHeader(i int) {
 	if !rw.ok {
 		rw.handleBadImpl()
 		return
@@ -333,7 +362,7 @@ func (rw *CheckIfVerifiedResponseWriter) WriteHeader(i int) {
 	rw.ResponseWriter.WriteHeader(i)
 }
 
-func (rw *CheckIfVerifiedResponseWriter) Write(b []byte) (int, error) {
+func (rw *checkIfVerifiedResponseWriter) Write(b []byte) (int, error) {
 	if !rw.ok {
 		rw.handleBadImpl()
 		return 0, io.EOF

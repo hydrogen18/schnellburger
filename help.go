@@ -3,7 +3,7 @@ package schnellburger
 import "net/http"
 import "fmt"
 
-type Help struct {
+type help struct {
 	StatusCode int
 	ErrorCode  int
 	Message    string
@@ -12,8 +12,8 @@ type Help struct {
 
 var helpErrCodeCounter = 0
 
-func NewHelp(sc int, title string, message string) *Help {
-	r := &Help{}
+func NewHelp(sc int, title string, message string) *help {
+	r := &help{}
 	r.StatusCode = sc
 	r.Title = title
 	r.Message = message
@@ -30,7 +30,7 @@ const ERROR_CODE_HEADER = "X-Schnellburger-Error-Code"
 const DOCUMENTATION_URL_HEADER = "X-Schnellburger-Doc"
 const DOCUMENTATION_URL = "http:///"
 
-func (h *Help) Show(rw http.ResponseWriter, req *http.Request, sb Schnellburger, err error) {
+func (h *help) Show(rw http.ResponseWriter, req *http.Request, sb Schnellburger, err error) {
 	rw.Header().Add(ERROR_CODE_HEADER, fmt.Sprintf("%d", h.ErrorCode))
 	rw.Header().Add(DOCUMENTATION_URL_HEADER, DOCUMENTATION_URL)
 	rw.Header().Add(ALGORITHM_HEADER, fmt.Sprintf("%T", sb.Algorithm()))

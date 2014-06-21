@@ -37,7 +37,7 @@ func (s *TestSuite) client() *http.Client {
 
 var testalgo = md5.New
 
-func assertMatchesError(resp *http.Response, h *Help, c *C) {
+func assertMatchesError(resp *http.Response, h *help, c *C) {
 	c.Assert(resp.StatusCode, Equals, h.StatusCode)
 
 	errCode, err := strconv.Atoi(resp.Header.Get(ERROR_CODE_HEADER))
