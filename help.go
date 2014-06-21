@@ -23,12 +23,21 @@ func NewHelp(sc int, title string, message string) *help {
 	return r
 }
 
+//Header returned to clients to indicate what algorithm to sign requests with
 const ALGORITHM_HEADER = "X-Schnellburger-Algo"
+
+//Header returned to clients to indicate the error message, if any
 const ERROR_HEADER = "X-Schnellburger-Error"
+
+//Header returned to client to idnicate the type of the error, if any
 const ERROR_TYPE_HEADER = "X-Schnellburger-Error-Type"
+
+//Header returned to clients to uniquely identify this error
 const ERROR_CODE_HEADER = "X-Schnellburger-Error-Code"
+
+//Header returned to clients to link to documentation
 const DOCUMENTATION_URL_HEADER = "X-Schnellburger-Doc"
-const DOCUMENTATION_URL = "http:///"
+const DOCUMENTATION_URL = "http://godoc.org/github.com/hydrogen18/schnellburger"
 
 func (h *help) Show(rw http.ResponseWriter, req *http.Request, sb Schnellburger, err error) {
 	rw.Header().Add(ERROR_CODE_HEADER, fmt.Sprintf("%d", h.ErrorCode))

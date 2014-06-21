@@ -11,15 +11,19 @@ import "log"
 import "io/ioutil"
 import "runtime"
 
-/* Returns (nil, nil) if no such key exists.
+/*
+Returns (nil, nil) if no such key exists.
 Returning an error results in that error being show to the
 client and a status code of http.StatusInternalServerError
-begin returned */
+begin returned
+*/
 type KeyProvider interface {
 	GetKey(index uint64) ([]byte, error)
 }
 
-/*Wrapper to allow functions to be used as KeyProvider*/
+/*
+Wrapper to allow functions to be used as KeyProvider
+*/
 type KeyProviderFunc func(index uint64) ([]byte, error)
 
 func (kpf KeyProviderFunc) GetKey(index uint64) ([]byte, error) {
@@ -49,7 +53,7 @@ func (sb Schnellburger) saneOrPanic() {
 	}
 }
 
-/**
+/*
 A handler as used by this package. The third parameter must be called
 before taking any action based off the request but
 after req.Body is consumed completely. If false is returned
@@ -60,7 +64,7 @@ and the handler should proceed as normal.
 See:
 WrapHandler
 WrapHttpHandler
-**/
+*/
 type Handler interface {
 	ServeHTTP(rw http.ResponseWriter, req *http.Request, verify func() bool)
 }
@@ -71,10 +75,10 @@ func (f HandlerFunc) ServeHTTP(rw http.ResponseWriter, req *http.Request, verify
 	f(rw, req, verify)
 }
 
-/**
+/*
 Protects a handler with HMAC verification. If the handler only responds
 to requests with a body, this is the preferred way to use this package.
-**/
+*/
 func (sb Schnellburger) WrapHandler(handler Handler) http.Handler {
 	sb.saneOrPanic()
 	sb.algorithmSize = sb.Algorithm().Size()
@@ -127,11 +131,11 @@ func (hhw httpHandlerWrapper) ServeHTTP(rw http.ResponseWriter, req *http.Reques
 	hhw.Handler.ServeHTTP(rw, req)
 }
 
-/**
+/*
 Protects a traditional http.Handler instance with HMAC verification. If the
 handler only responds to requests without a body, this is the preferred
 way to use this package.
-**/
+*/
 func (sb Schnellburger) WrapHttpHandler(handler http.Handler) http.Handler {
 	return sb.WrapHandler(httpHandlerWrapper{handler})
 
