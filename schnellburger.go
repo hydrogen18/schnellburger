@@ -54,7 +54,6 @@ func (f HandlerFunc) ServeHTTP(rw http.ResponseWriter, req *http.Request, verify
 func (sb Schnellburger) WrapHandler(handler Handler) http.Handler {
 	sb.saneOrPanic()
 	sb.algorithmSize = sb.Algorithm().Size()
-	//sb.impl = nil
 	sb.impl = handler
 	return sb
 }
@@ -106,14 +105,7 @@ func (hhw httpHandlerWrapper) ServeHTTP(rw http.ResponseWriter, req *http.Reques
 
 func (sb Schnellburger) WrapHttpHandler(handler http.Handler) http.Handler {
 	return sb.WrapHandler(httpHandlerWrapper{handler})
-	/**
-	sb.saneOrPanic()
 
-	sb.algorithmSize = sb.Algorithm().Size()
-	sb.impl = handler
-	sb.awareImpl = nil
-
-	return sb**/
 }
 
 const HMAC_HEADER = "Authorization"
