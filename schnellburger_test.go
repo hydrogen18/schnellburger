@@ -182,136 +182,140 @@ func (s *TestSuite) TestGetWithPathAndQueryRequest(c *C) {
 }
 
 func (s *TestSuite) TestGetRequest(c *C) {
-	client := s.client()
-	response, err := client.Get(s.server.URL)
-	c.Assert(err, IsNil)
-	assertMatchesError(response, MissingHeader, c)
+	t := func(server *httptest.Server) {
+		client := s.client()
+		response, err := client.Get(server.URL)
+		c.Assert(err, IsNil)
+		assertMatchesError(response, MissingHeader, c)
 
-	req := &http.Request{}
-	req.Method = "GET"
-	req.URL, err = url.Parse(s.server.URL)
-	c.Assert(err, IsNil)
-	req.Header = http.Header{}
+		req := &http.Request{}
+		req.Method = "GET"
+		req.URL, err = url.Parse(s.server.URL)
+		c.Assert(err, IsNil)
+		req.Header = http.Header{}
 
-	req.Header.Set(HMAC_HEADER, "@")
-	response, err = client.Do(req)
-	c.Assert(err, IsNil)
-	assertMatchesError(response, InvalidHeader, c)
+		req.Header.Set(HMAC_HEADER, "@")
+		response, err = client.Do(req)
+		c.Assert(err, IsNil)
+		assertMatchesError(response, InvalidHeader, c)
 
-	req.Header.Set(HMAC_HEADER, "AAAA")
-	response, err = client.Do(req)
-	c.Assert(err, IsNil)
-	assertMatchesError(response, HeaderTooShort, c)
+		req.Header.Set(HMAC_HEADER, "AAAA")
+		response, err = client.Do(req)
+		c.Assert(err, IsNil)
+		assertMatchesError(response, HeaderTooShort, c)
 
-	//Just a signature, 0 key index implied
-	v := testalgo().Sum(nil)
-	req.Header.Set(HMAC_HEADER, base64.StdEncoding.EncodeToString(v))
-	response, err = client.Do(req)
-	c.Assert(err, IsNil)
-	assertMatchesError(response, NotAuthentic, c)
+		//Just a signature, 0 key index implied
+		v := testalgo().Sum(nil)
+		req.Header.Set(HMAC_HEADER, base64.StdEncoding.EncodeToString(v))
+		response, err = client.Do(req)
+		c.Assert(err, IsNil)
+		assertMatchesError(response, NotAuthentic, c)
 
-	//Just a signature, 0 key index implied
-	SIG := []byte{0x52, 0x63, 0x9f, 0x51, 0x35, 0x17, 0x57, 0x8a, 0xdb, 0xc2, 0x41, 0x5, 0x4e, 0x87, 0xfa, 0x77}
-	req.Header.Set(HMAC_HEADER, base64.StdEncoding.EncodeToString(SIG))
-	response, err = client.Do(req)
-	c.Assert(err, IsNil)
-	assertOk(response, c)
+		//Just a signature, 0 key index implied
+		SIG := []byte{0x52, 0x63, 0x9f, 0x51, 0x35, 0x17, 0x57, 0x8a, 0xdb, 0xc2, 0x41, 0x5, 0x4e, 0x87, 0xfa, 0x77}
+		req.Header.Set(HMAC_HEADER, base64.StdEncoding.EncodeToString(SIG))
+		response, err = client.Do(req)
+		c.Assert(err, IsNil)
+		assertOk(response, c)
 
-	buf := &bytes.Buffer{}
+		buf := &bytes.Buffer{}
 
-	//Explicitly specify the 0 key
-	buf.Reset()
-	err = binary.Write(buf, binary.BigEndian, uint8(0))
-	c.Assert(err, IsNil)
-	_, err = buf.Write(SIG)
-	c.Assert(err, IsNil)
-	req.Header.Set(HMAC_HEADER, base64.StdEncoding.EncodeToString(buf.Bytes()))
-	response, err = client.Do(req)
-	c.Assert(err, IsNil)
-	assertOk(response, c)
+		//Explicitly specify the 0 key
+		buf.Reset()
+		err = binary.Write(buf, binary.BigEndian, uint8(0))
+		c.Assert(err, IsNil)
+		_, err = buf.Write(SIG)
+		c.Assert(err, IsNil)
+		req.Header.Set(HMAC_HEADER, base64.StdEncoding.EncodeToString(buf.Bytes()))
+		response, err = client.Do(req)
+		c.Assert(err, IsNil)
+		assertOk(response, c)
 
-	//Explicitly specify the 0 key
-	buf.Reset()
-	err = binary.Write(buf, binary.BigEndian, uint16(0))
-	c.Assert(err, IsNil)
-	_, err = buf.Write(SIG)
-	c.Assert(err, IsNil)
-	req.Header.Set(HMAC_HEADER, base64.StdEncoding.EncodeToString(buf.Bytes()))
-	response, err = client.Do(req)
-	c.Assert(err, IsNil)
-	assertOk(response, c)
+		//Explicitly specify the 0 key
+		buf.Reset()
+		err = binary.Write(buf, binary.BigEndian, uint16(0))
+		c.Assert(err, IsNil)
+		_, err = buf.Write(SIG)
+		c.Assert(err, IsNil)
+		req.Header.Set(HMAC_HEADER, base64.StdEncoding.EncodeToString(buf.Bytes()))
+		response, err = client.Do(req)
+		c.Assert(err, IsNil)
+		assertOk(response, c)
 
-	//Explicitly specify the 0 key
-	buf.Reset()
-	err = binary.Write(buf, binary.BigEndian, uint32(0))
-	c.Assert(err, IsNil)
-	_, err = buf.Write(SIG)
-	c.Assert(err, IsNil)
-	req.Header.Set(HMAC_HEADER, base64.StdEncoding.EncodeToString(buf.Bytes()))
-	response, err = client.Do(req)
-	c.Assert(err, IsNil)
-	assertOk(response, c)
+		//Explicitly specify the 0 key
+		buf.Reset()
+		err = binary.Write(buf, binary.BigEndian, uint32(0))
+		c.Assert(err, IsNil)
+		_, err = buf.Write(SIG)
+		c.Assert(err, IsNil)
+		req.Header.Set(HMAC_HEADER, base64.StdEncoding.EncodeToString(buf.Bytes()))
+		response, err = client.Do(req)
+		c.Assert(err, IsNil)
+		assertOk(response, c)
 
-	//Explicitly specify the 0 key
-	buf.Reset()
-	err = binary.Write(buf, binary.BigEndian, uint64(0))
-	c.Assert(err, IsNil)
-	_, err = buf.Write(SIG)
-	c.Assert(err, IsNil)
-	req.Header.Set(HMAC_HEADER, base64.StdEncoding.EncodeToString(buf.Bytes()))
-	response, err = client.Do(req)
-	c.Assert(err, IsNil)
-	assertOk(response, c)
+		//Explicitly specify the 0 key
+		buf.Reset()
+		err = binary.Write(buf, binary.BigEndian, uint64(0))
+		c.Assert(err, IsNil)
+		_, err = buf.Write(SIG)
+		c.Assert(err, IsNil)
+		req.Header.Set(HMAC_HEADER, base64.StdEncoding.EncodeToString(buf.Bytes()))
+		response, err = client.Do(req)
+		c.Assert(err, IsNil)
+		assertOk(response, c)
 
-	//Send a 3-byte key, not allowed
-	buf.Reset()
-	err = binary.Write(buf, binary.BigEndian, uint16(0))
-	c.Assert(err, IsNil)
-	_, err = buf.Write([]byte{0x0})
-	c.Assert(err, IsNil)
-	_, err = buf.Write(SIG)
-	c.Assert(err, IsNil)
-	req.Header.Set(HMAC_HEADER, base64.StdEncoding.EncodeToString(buf.Bytes()))
-	response, err = client.Do(req)
-	c.Assert(err, IsNil)
-	assertMatchesError(response, KeyIndexWrongLength, c)
+		//Send a 3-byte key, not allowed
+		buf.Reset()
+		err = binary.Write(buf, binary.BigEndian, uint16(0))
+		c.Assert(err, IsNil)
+		_, err = buf.Write([]byte{0x0})
+		c.Assert(err, IsNil)
+		_, err = buf.Write(SIG)
+		c.Assert(err, IsNil)
+		req.Header.Set(HMAC_HEADER, base64.StdEncoding.EncodeToString(buf.Bytes()))
+		response, err = client.Do(req)
+		c.Assert(err, IsNil)
+		assertMatchesError(response, KeyIndexWrongLength, c)
 
-	//Send a missing key with valid signature,
-	//should fail without any explicit notice
-	buf.Reset()
-	err = binary.Write(buf, binary.BigEndian, uint64(MISSING_KEY_INDEX))
-	c.Assert(err, IsNil)
-	_, err = buf.Write(SIG)
-	c.Assert(err, IsNil)
-	req.Header.Set(HMAC_HEADER, base64.StdEncoding.EncodeToString(buf.Bytes()))
-	response, err = client.Do(req)
-	c.Assert(err, IsNil)
-	assertMatchesError(response, NotAuthentic, c)
+		//Send a missing key with valid signature,
+		//should fail without any explicit notice
+		buf.Reset()
+		err = binary.Write(buf, binary.BigEndian, uint64(MISSING_KEY_INDEX))
+		c.Assert(err, IsNil)
+		_, err = buf.Write(SIG)
+		c.Assert(err, IsNil)
+		req.Header.Set(HMAC_HEADER, base64.StdEncoding.EncodeToString(buf.Bytes()))
+		response, err = client.Do(req)
+		c.Assert(err, IsNil)
+		assertMatchesError(response, NotAuthentic, c)
 
-	//Send a key that causes lookup failure, but a valid signature
-	buf.Reset()
-	err = binary.Write(buf, binary.BigEndian, uint64(ERROR_KEY_INDEX))
-	c.Assert(err, IsNil)
-	_, err = buf.Write(SIG)
-	c.Assert(err, IsNil)
-	req.Header.Set(HMAC_HEADER, base64.StdEncoding.EncodeToString(buf.Bytes()))
-	response, err = client.Do(req)
-	c.Assert(err, IsNil)
-	assertMatchesError(response, KeyLookupFailure, c)
+		//Send a key that causes lookup failure, but a valid signature
+		buf.Reset()
+		err = binary.Write(buf, binary.BigEndian, uint64(ERROR_KEY_INDEX))
+		c.Assert(err, IsNil)
+		_, err = buf.Write(SIG)
+		c.Assert(err, IsNil)
+		req.Header.Set(HMAC_HEADER, base64.StdEncoding.EncodeToString(buf.Bytes()))
+		response, err = client.Do(req)
+		c.Assert(err, IsNil)
+		assertMatchesError(response, KeyLookupFailure, c)
 
-	//Send an extra byte to trigger the wrong size signature
-	//This actually is caught by KeyIndexWrongLength
-	buf.Reset()
-	err = binary.Write(buf, binary.BigEndian, uint64(0))
-	c.Assert(err, IsNil)
-	_, err = buf.Write(SIG)
-	c.Assert(err, IsNil)
-	_, err = buf.Write([]byte{0x0})
-	c.Assert(err, IsNil)
-	req.Header.Set(HMAC_HEADER, base64.StdEncoding.EncodeToString(buf.Bytes()))
-	response, err = client.Do(req)
-	c.Assert(err, IsNil)
-	assertMatchesError(response, KeyIndexWrongLength, c)
+		//Send an extra byte to trigger the wrong size signature
+		//This actually is caught by KeyIndexWrongLength
+		buf.Reset()
+		err = binary.Write(buf, binary.BigEndian, uint64(0))
+		c.Assert(err, IsNil)
+		_, err = buf.Write(SIG)
+		c.Assert(err, IsNil)
+		_, err = buf.Write([]byte{0x0})
+		c.Assert(err, IsNil)
+		req.Header.Set(HMAC_HEADER, base64.StdEncoding.EncodeToString(buf.Bytes()))
+		response, err = client.Do(req)
+		c.Assert(err, IsNil)
+		assertMatchesError(response, KeyIndexWrongLength, c)
+	}
+	t(s.server)
+	t(s.awareServer)
 }
 
 func (s *TestSuite) TestPanicOnNoVerify(c *C) {
