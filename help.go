@@ -12,7 +12,7 @@ type help struct {
 
 var helpErrCodeCounter = 0
 
-func NewHelp(sc int, title string, message string) *help {
+func newHelp(sc int, title string, message string) *help {
 	r := &help{}
 	r.StatusCode = sc
 	r.Title = title
@@ -53,23 +53,23 @@ func (h *help) Show(rw http.ResponseWriter, req *http.Request, sb Schnellburger,
 	fmt.Fprintf(rw, "%s\n---\n%s", h.Title, h.Message)
 }
 
-var MissingHeader = NewHelp(http.StatusForbidden, "Missing Header",
+var MissingHeader = newHelp(http.StatusForbidden, "Missing Header",
 	fmt.Sprintf("You must supply the authorization header %q to this endpoint", HMAC_HEADER))
 
-var InvalidHeader = NewHelp(http.StatusForbidden, "Invalid Header",
+var InvalidHeader = newHelp(http.StatusForbidden, "Invalid Header",
 	fmt.Sprintf("The value supplied as the header %q must the base64 encoding of a signature", HMAC_HEADER))
 
-var HeaderTooShort = NewHelp(http.StatusForbidden, "Header Too Short",
+var HeaderTooShort = newHelp(http.StatusForbidden, "Header Too Short",
 	fmt.Sprintf("The value supplied as the header %q did not have enough bytes after base64 decoding", HMAC_HEADER))
 
-var KeyIndexWrongLength = NewHelp(http.StatusForbidden, "Key Index Wrong Length",
+var KeyIndexWrongLength = newHelp(http.StatusForbidden, "Key Index Wrong Length",
 	"The key index at the beginning of the authorization bytes must be exactly 0,2,4, or 8 bytes representing an unsigned integer")
 
-var SignatureWrongSize = NewHelp(http.StatusForbidden, "Signature Wrong Size",
+var SignatureWrongSize = newHelp(http.StatusForbidden, "Signature Wrong Size",
 	"The bytes after the key index must exactly match the output of the algorithm in use")
 
-var NotAuthentic = NewHelp(http.StatusForbidden, "Not Authentic",
+var NotAuthentic = newHelp(http.StatusForbidden, "Not Authentic",
 	"The request you have made is not authentic")
 
-var KeyLookupFailure = NewHelp(http.StatusInternalServerError, "Key Lookup Failure",
+var KeyLookupFailure = newHelp(http.StatusInternalServerError, "Key Lookup Failure",
 	"Failure while attempting to lookup the key by index")
