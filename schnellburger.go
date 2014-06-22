@@ -1,3 +1,144 @@
+/*
+
+This package allows you to add HMAC security to an existing http server.
+This implementations builds on the existing "net/http" package.
+
+The first step is create an instance of Schnellburger. Next, select
+the cryptographic algorithm that is used to secure endpoints. This is done
+by setting the `Algorithm` member of the Schnellburger structure to
+a function like `md5.new`. Finally,
+implement a KeyProvider. A KeyProvider allows the Schnellburger instance
+to lookup keys by index. The HTTP client sends the key index as part of
+the request. The value of the key used constitutes a preshared secret
+between the server and the client. It is used to prove the authenticity
+of the request by the client.
+
+To prove the authenticity of a request, the client sends the signature for the request
+and an optional key index. If the key index is not provided the key at index
+zero is used. This value is placed in the Authorization header sent by the client.
+The Authorization header is base64 encoded by the client. The server decodes
+this and uses the resulting byte slice as follows
+
+	|----X----|---------------Y-------------------|
+
+	Where X is 0,1,2,4,6, or 8 bytes. These values correspond to the
+	following types
+	0 - No type. The key at index 0 is used.
+	1 - uint8
+	2 - uint16
+	4 - uint32
+	8 - uint64
+	Integers are always considered to be in big endian byte order
+
+
+	Where Y is the cryptographic signature, having exactly the same length
+	as the number of bytes as the slice returned by Algorithm.Sum(nil)
+
+The cryptographic signature is computed as follows using the HMAC
+algorithm and the chosen cryptogrpaphic hash implementation.
+
+	1. The request method ("GET","POST",etc.)
+	2. The path of the reuquest. There is no concept of an empty path, a
+	request for the root resource has a path of "/".
+	3. The raw request query with the leading question mark.
+	4. The body of the request, if any.
+
+The server responds with 403 if for any reason the value of the header does
+not prove the authenticity of the request.
+
+This example shows protecting http.FileServer with this package.
+
+	package main
+
+	import "net/http"
+
+	import "github.com/hydrogen18/schnellburger"
+	import "crypto/md5"
+
+	//Simple implementation of key provider
+	type DictKeyProvider map[uint64][]byte
+
+	func (dkp DictKeyProvider) GetKey(index uint64) ([]byte, error) {
+		k, ok := dkp[index]
+		if !ok {
+			return nil, nil
+		}
+
+		return k, nil
+	}
+
+	func main() {
+
+		kp := DictKeyProvider{}
+
+		//Configure keys
+		kp[0] = []byte{0x1, 0x2, 0x3, 0x4}
+
+		//Create an instance of schnellburger
+		sb := schnellburger.Schnellburger{}
+
+		//Use the MD5 hash
+		sb.Algorithm = md5.New
+		//Use the dictionary key provider
+		sb.Kp = kp
+
+		server := http.Server{}
+		server.Addr = "0.0.0.0:8080"
+		//Wrap the http.Handler to protect it
+		//with HMAC
+		server.Handler = sb.WrapHttpHandler(http.FileServer(http.Dir("/tmp")))
+
+		//serve forever
+
+		server.ListenAndServe()
+
+	}
+
+
+Using curl we can see the request is denied
+
+	ericu@eric-phenom-linux:~$ curl -D - http://localhost:8080
+	HTTP/1.1 403 Forbidden
+	Content-Type: text/plain
+	X-Schnellburger-Algo: *md5.digest
+	X-Schnellburger-Doc: http://godoc.org/github.com/hydrogen18/schnellburger
+	X-Schnellburger-Error-Code: 0
+	Date: Sun, 22 Jun 2014 02:07:37 GMT
+	Content-Length: 92
+
+	Missing Header
+	---
+	You must supply the authorization header "Authorization" to this endpoint
+
+
+After creating a file and repeating the same curl command, but this time
+with the correct header
+
+	ericu@eric-phenom-linux:/tmp$ echo 'Hello Crypto' > /tmp/x
+	ericu@eric-phenom-linux:/tmp$ curl -D - -H "Authorization: ADVij+gEOkh2xRqsTAeGcyg=" http://192.168.12.10:8080/x
+	HTTP/1.1 200 OK
+	Accept-Ranges: bytes
+	Content-Length: 13
+	Content-Type: text/plain; charset=utf-8
+	Last-Modified: Sun, 22 Jun 2014 02:14:01 GMT
+	Date: Sun, 22 Jun 2014 02:14:04 GMT
+
+	Hello Crypto
+
+The request is allowed.
+
+The preferred implementation is to use (*Schnellburger).WrapHttpHandler. However, this makes
+an in-memory of the body sent by the client. For requests that cannot possibly
+have a body, this is of no impact. For requests that have a body, this only
+matters if the body is very large. If the body is very large (*Schnellburger).WrapHandler
+should be called to add HMAC security. The handler must be of type schnellburger.Handler.
+This type requires that the verify closure be called before taking any action on the
+request but after reading the body entirely. Any implementation not honoring
+this contract results in a call to "Printf" from the "log" package of the caller.
+This process allows the handler to write the body of the request to an alternate
+location rather than requiring it to be buffered in memory.
+
+*/
 package schnellburger
 
 import "net/http"
@@ -16,6 +157,7 @@ Returns (nil, nil) if no such key exists.
 Returning an error results in that error being show to the
 client and a status code of http.StatusInternalServerError
 begin returned
+
 */
 type KeyProvider interface {
 	GetKey(index uint64) ([]byte, error)
