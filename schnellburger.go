@@ -38,7 +38,7 @@ The cryptographic signature is computed as follows using the HMAC
 algorithm and the chosen cryptogrpaphic hash implementation.
 
 	1. The request method ("GET","POST",etc.)
-	2. The path of the reuquest. There is no concept of an empty path, a
+	2. The path of the request. There is no concept of an empty path, a
 	request for the root resource has a path of "/".
 	3. The raw request query with the leading question mark.
 	4. The body of the request, if any.
