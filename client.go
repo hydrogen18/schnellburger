@@ -10,16 +10,16 @@ import "bytes"
 import "encoding/binary"
 import "encoding/base64"
 
-type SchnellburgerRoundTripper struct {
+type RoundTripper struct {
 	Next      http.RoundTripper
 	Key       []byte
 	KeyId     uint64
 	Algorithm func() hash.Hash
 }
 
-func (this SchnellburgerRoundTripper) RoundTrip(originalRequest *http.Request) (*http.Response, error) {
+func (this RoundTripper) RoundTrip(originalRequest *http.Request) (*http.Response, error) {
 
-	//This cannot be manipulated according to the spiec but can be copied
+	//This cannot be manipulated according to the spec but can be copied
 	var req *http.Request
 	req = &http.Request{}
 	*req = *originalRequest
