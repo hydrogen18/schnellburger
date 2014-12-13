@@ -305,6 +305,9 @@ func (sb Schnellburger) FindHmacHeader(req *http.Request) (uint64, []byte, error
 	}
 
 	//If the header doesn't have enough bytes, fail
+	if sb.algorithmSize == 0 {
+		sb.algorithmSize = sb.Algorithm().Size()
+	}
 	if len(headerBinary) < sb.algorithmSize {
 		return 0, nil, ErrHeaderTooShort
 	}
@@ -340,7 +343,6 @@ func (sb Schnellburger) FindHmacHeader(req *http.Request) (uint64, []byte, error
 		err = binary.Read(reader, binary.BigEndian, &keyIndex)
 	default:
 		return 0, nil, ErrKeyIndexWrongLength
-
 	}
 
 	if err != nil {

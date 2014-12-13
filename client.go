@@ -97,21 +97,20 @@ func (this RoundTripper) RoundTrip(originalRequest *http.Request) (*http.Respons
 		}
 
 		signature := &bytes.Buffer{}
-		signature.Grow(4 + 64)
+
 		err = binary.Write(signature, binary.BigEndian, this.KeyId)
 		if err != nil {
 			return nil, err
 		}
 
-		_, err = signature.Write(h.Sum(nil))
+		sum := h.Sum(nil)
+		_, err = signature.Write(sum)
 		if err != nil {
 			return nil, err
 		}
 
 		sigb64 := base64.StdEncoding.EncodeToString(signature.Bytes())
-		if req.Header == nil {
-			req.Header = http.Header{}
-		}
+
 		req.Header.Set(SIGNATURE_HEADER, sigb64)
 	}
 	if this.Next != nil {
